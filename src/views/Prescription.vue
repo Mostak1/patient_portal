@@ -266,7 +266,7 @@ const fetchPrescriptionData = async () => {
   isLoading.value = true
   error.value = ''
   try {
-    const response = await axios.get('http://localhost/Projects/Lacuna_main_only/public/api/prescriptions/by-details', {
+    const response = await axios.get('https://awc.careneterp.com:83/api/prescriptions/by-details', {
       params: {
         mobile_number: route.query.mobile,
         invoice_number: route.params.id

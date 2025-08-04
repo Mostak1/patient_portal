@@ -94,7 +94,7 @@ const fetchData = async () => {
   
   try {
     if (documentType.value === 'report') {
-      const response = await axios.get('http://127.0.0.1:8000/api/v1/customer-reports', {
+      const response = await axios.get('https://awc.careneterp.com:84/api/v1/customer-reports', {
         params: {
           invoice_number: invoiceNumber.value,
           mobile_number: mobileNumber.value
@@ -111,7 +111,7 @@ const fetchData = async () => {
         error.value = 'Report not found. Please verify your invoice and mobile number.'
       }
     } else if (documentType.value === 'prescription') {
-      const response = await axios.get('http://localhost/Projects/Lacuna_main_only/public/api/prescriptions/by-details', {
+      const response = await axios.get('https://awc.careneterp.com:83/api/prescriptions/by-details', {
         params: {
           mobile_number: mobileNumber.value,
           invoice_number: invoiceNumber.value

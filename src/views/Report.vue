@@ -69,7 +69,7 @@ onMounted(async () => {
     const mobile = route.query.mobile
 
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/v1/customer-reports', {
+        const response = await axios.get('https://awc.careneterp.com:84/api/v1/customer-reports', {
             params: {
                 invoice_number: invoice,
                 mobile_number: mobile
