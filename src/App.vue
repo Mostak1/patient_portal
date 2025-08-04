@@ -6,7 +6,9 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <img class="h-10 w-auto" :src="logo" alt="American Wellness Center Logo">
+            <a href="/">
+              <img class="h-10 w-auto" :src="logo" alt="American Wellness Center Logo">
+            </a>
           </div>
           <div class="text-right">
             <h2 class="text-xl font-semibold text-blue-600">American Wellness Center</h2>
