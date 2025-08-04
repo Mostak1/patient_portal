@@ -1,4 +1,3 @@
-```vue
 <template>
   <div class="prescription-wrapper">
     <div class="prescription-container bg-white">
@@ -182,7 +181,7 @@
             </div>
             <div class="md:col-span-9 mt-2">
               <p style="font-size: 0.9rem;">Islam Tower, 2nd & 3rd Floor, Sukrabad Bus Stand, Dhanmondi-32, Dhaka-1207.</p>
-              <p class="font-bold">For Appointment: +88 09666747470 (BD), E-mail: acrhbd@gmail.com</p>
+              <p style="font-size: 1rem;" class="font-bold">For Appointment: +88 09666747470 (BD), E-mail: acrhbd@gmail.com</p>
             </div>
           </div>
         </div>
@@ -191,7 +190,7 @@
 
     <!-- Action Buttons -->
     <div class="flex justify-center gap-4 mt-8">
-      <button @click="printPrescription" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
+      <button @click="navigateToPrint" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
         <i class="fas fa-print"></i> Print
       </button>
       <button @click="downloadPrescription" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
@@ -203,12 +202,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
 const route = useRoute()
+const router = useRouter()
 const prescriptionData = ref(null)
 const businessLogo = ref('/awc_logo.png')
 const isLoading = ref(false)
@@ -288,9 +288,14 @@ onMounted(() => {
   }
 })
 
-// Print prescription
-const printPrescription = () => {
-  window.print()
+// Navigate to print page
+const navigateToPrint = () => {
+  router.push({
+    name: 'PrescriptionPrint',
+    params: { id: route.params.id },
+    query: { mobile: route.query.mobile },
+    state: { prescriptionData: prescriptionData.value, returnRoute: route.fullPath }
+  })
 }
 
 // Download PDF
@@ -319,19 +324,16 @@ const downloadPrescription = async () => {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
-      windowWidth: 794, // A4 width in pixels at 96 DPI
-      windowHeight: 1123 // A4 height in pixels at 96 DPI
+      windowWidth: 794,
+      windowHeight: 1123
     })
 
     const imgData = canvas.toDataURL('image/png')
     doc.addImage(imgData, 'PNG', 0, 0, 210, 297)
-
-    // Save PDF
     doc.save(`Prescription_${prescription.value.prescription_number || 'unknown'}.pdf`)
   } catch (error) {
     console.error('PDF generation failed:', error)
   } finally {
-    // Restore original styles
     element.style.width = ''
     element.style.height = ''
     element.style.position = ''
@@ -402,10 +404,6 @@ const downloadPrescription = async () => {
   body {
     margin: 0;
     padding: 0;
-  }
-
-  header, footer {
-    display: none;
   }
 
   .prescription-container {
