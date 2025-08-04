@@ -190,7 +190,7 @@
 
   <!-- Action Buttons -->
   <div class="flex justify-center gap-4 mt-8">
-    <button @click="handlePrint" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
+    <button hidden @click="handlePrint" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
       <i class="fas fa-print"></i> Print
     </button>
     <button @click="downloadPrescription" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
