@@ -188,15 +188,23 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
-    <div class="flex justify-center gap-4 mt-8">
-      <button @click="navigateToPrint" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
-        <i class="fas fa-print"></i> Print
-      </button>
-      <button @click="downloadPrescription" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
-        <i class="fas fa-download"></i> Download PDF
-      </button>
-    </div>
+  <!-- Action Buttons -->
+  <div class="flex justify-center gap-4 mt-8">
+    <button @click="handlePrint" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
+      <i class="fas fa-print"></i> Print
+    </button>
+    <button @click="downloadPrescription" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
+      <i class="fas fa-download"></i> Download PDF
+    </button>
+  </div>
+    <!-- Add this hidden div for printing -->
+  <div v-if="showPrintView" class="fixed inset-0 z-50 overflow-auto bg-white print:bg-transparent">
+    <PrescriptionPrint 
+      v-if="showPrintView" 
+      :prescriptionData="prescriptionData"
+      @close="handlePrintClose"
+    />
+  </div>
   </div>
 </template>
 
@@ -288,36 +296,43 @@ onMounted(() => {
   }
 })
 
-// Navigate to print page
-const navigateToPrint = () => {
-  router.push({
-    name: 'PrescriptionPrint',
-    params: { id: route.params.id },
-    query: { mobile: route.query.mobile },
-    state: { prescriptionData: prescriptionData.value, returnRoute: route.fullPath }
-  })
-}
 
-// Download PDF
+import PrescriptionPrint from './PrescriptionPrint.vue';
+
+const showPrintView = ref(false);
+
+const handlePrint = () => {
+  showPrintView.value = true;
+};
+
+const handlePrintClose = () => {
+  showPrintView.value = false;
+};
+
+// Update downloadPrescription function
 const downloadPrescription = async () => {
   if (!prescriptionData.value) {
-    console.error('No prescription data available for PDF generation')
-    return
+    console.error('No prescription data available for PDF generation');
+    return;
   }
 
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: 'a4'
-  })
+  });
 
-  const element = document.querySelector('.prescription-container')
+  // Create a temporary div for PDF generation
+  const tempDiv = document.createElement('div');
+  tempDiv.style.position = 'absolute';
+  tempDiv.style.left = '-9999px';
+  tempDiv.style.width = '210mm';
+  tempDiv.style.height = '297mm';
+  document.body.appendChild(tempDiv);
 
-  // Temporarily adjust styles for PDF rendering
-  element.style.width = '210mm'
-  element.style.height = '297mm'
-  element.style.position = 'relative'
-  element.style.overflow = 'visible'
+  // Clone the prescription container
+  const element = document.querySelector('.prescription-container').cloneNode(true);
+  tempDiv.appendChild(element);
 
   try {
     const canvas = await html2canvas(element, {
@@ -325,21 +340,23 @@ const downloadPrescription = async () => {
       useCORS: true,
       backgroundColor: '#ffffff',
       windowWidth: 794,
-      windowHeight: 1123
-    })
+      windowHeight: 1123,
+      logging: true
+    });
 
-    const imgData = canvas.toDataURL('image/png')
-    doc.addImage(imgData, 'PNG', 0, 0, 210, 297)
-    doc.save(`Prescription_${prescription.value.prescription_number || 'unknown'}.pdf`)
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = doc.getImageProperties(imgData);
+    const pdfWidth = doc.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    
+    doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    doc.save(`Prescription_${prescription.value.prescription_number || 'unknown'}.pdf`);
   } catch (error) {
-    console.error('PDF generation failed:', error)
+    console.error('PDF generation failed:', error);
   } finally {
-    element.style.width = ''
-    element.style.height = ''
-    element.style.position = ''
-    element.style.overflow = ''
+    document.body.removeChild(tempDiv);
   }
-}
+};
 </script>
 
 <style scoped>

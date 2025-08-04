@@ -1,9 +1,8 @@
-```vue
 <template>
   <div class="print-container">
     <div class="prescription-container bg-white">
       <!-- Prescription Header -->
-      <div class="prescription-header absolute top-0 left-0 w-full bg-white z-10">
+      <div style="top: -20px;" class="prescription-header absolute top-0 left-0 w-full bg-white z-10">
         <div class="max-w-4xl mx-auto px-8 py-4">
           <div class="doctor-info flex justify-between items-start">
             <div class="clinic-logo">
@@ -19,18 +18,17 @@
 
       <!-- Main Content -->
       <div class="prescription-content pt-28 pb-20 px-8">
-        <div v-if="isLoading" class="text-center text-gray-600">
+        <div v-if="!prescriptionData" class="text-center text-gray-600">
           <p>Loading prescription data...</p>
         </div>
-        <div v-else-if="error" class="text-center text-red-600">
-          <p>{{ error }}</p>
-        </div>
-        <div v-else-if="prescriptionData">
+        <div v-else>
           <!-- Patient Info Section -->
           <div class="patient-info border border-black rounded-3xl py-4 px-6 mb-6 grid grid-cols-6 text-center mt-10">
             <div class="col-span-2">
               <p class="text-sm">Patient Name</p>
-              <p class="font-bold">{{ prescription.patient_first_name }} {{ prescription.patient_last_name || '' }} {{ prescription.customerId ? '(' + prescription.customerId + ')' : '' }}</p>
+              <p class="font-bold">{{ prescription.patient_first_name }} {{ prescription.patient_last_name || '' }} 
+                <span v-if="prescription.customerId">({{ prescription.customerId }})</span>
+              </p>
             </div>
             <div>
               <p class="text-sm">Age</p>
@@ -56,10 +54,12 @@
               <div class="mb-6">
                 <h3 class="font-bold text-lg mb-1">C/C:</h3>
                 <p class="text-sm">
-                  <span v-for="(history, index) in diseaseHistories" :key="index">
-                    {{ history.chief_complaint }}<br v-if="index < diseaseHistories.length - 1">
-                  </span>
-                  <span v-if="diseaseHistories.length === 0">No complaints recorded</span>
+                  <template v-if="diseaseHistories.length > 0">
+                    <span v-for="(history, index) in diseaseHistories" :key="index">
+                      {{ history.chief_complaint }}<br v-if="index < diseaseHistories.length - 1">
+                    </span>
+                  </template>
+                  <span v-else>No complaints recorded</span>
                 </p>
               </div>
               <div class="mb-6">
@@ -97,7 +97,7 @@
                     <td class="py-0.5">Body Fat:</td>
                     <td class="py-0.5">{{ prescription.body_fat_percent }} %</td>
                   </tr>
-                  <tr v-if="!prescription.current_height_feet && !prescription.current_weight && !prescription.pulse_rate && !prescription.systolic_pressure && !prescription.respiratory && !prescription.body_temp && !prescription.body_fat_percent">
+                  <tr v-if="!hasPhysicalExaminationData">
                     <td class="py-0.5">No observations recorded</td>
                   </tr>
                 </table>
@@ -166,9 +166,6 @@
             </div>
           </div>
         </div>
-        <div v-else class="text-center text-gray-600">
-          <p>No prescription data available. Please try again.</p>
-        </div>
       </div>
 
       <!-- Prescription Footer -->
@@ -188,33 +185,54 @@
         </div>
       </div>
     </div>
+
+    <!-- Add close button for non-print view -->
+    <button 
+      v-if="!isPrinting"
+      @click="closePrint"
+      class="fixed top-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+    >
+      Close
+    </button>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
 
-const route = useRoute()
-const router = useRouter()
-const prescriptionData = ref(null)
+const props = defineProps({
+  prescriptionData: {
+    type: Object,
+    required: true
+  }
+})
+
+const emit = defineEmits(['close'])
+
 const businessLogo = ref('/awc_logo.png')
-const isLoading = ref(false)
-const error = ref('')
+const isPrinting = ref(false)
 
 // Computed properties
-const prescription = computed(() => prescriptionData.value?.prescription || {})
-const prescribedMedicines = computed(() => prescriptionData.value?.prescribed_medicines || [])
+const prescription = computed(() => props.prescriptionData?.prescription || {})
+const prescribedMedicines = computed(() => props.prescriptionData?.prescribed_medicines || [])
 const advices = computed(() => {
   if (prescription.value.advices) {
     return prescription.value.advices.split(',').map(a => a.trim())
   }
   return []
 })
-const therapies = computed(() => prescriptionData.value?.prescribed_therapies || [])
-const investigations = computed(() => prescriptionData.value?.prescribed_tests || [])
-const diseaseHistories = computed(() => prescriptionData.value?.disease_histories || [])
+const therapies = computed(() => props.prescriptionData?.prescribed_therapies || [])
+const investigations = computed(() => props.prescriptionData?.prescribed_tests || [])
+const diseaseHistories = computed(() => props.prescriptionData?.disease_histories || [])
+const hasPhysicalExaminationData = computed(() => {
+  return prescription.value.current_height_feet || 
+         prescription.value.current_weight || 
+         prescription.value.pulse_rate || 
+         prescription.value.systolic_pressure || 
+         prescription.value.respiratory || 
+         prescription.value.body_temp || 
+         prescription.value.body_fat_percent
+})
 
 // Format date
 const formatDate = (dateString) => {
@@ -242,70 +260,45 @@ const generateBarcode = (text) => {
   return `https://barcode.tec-it.com/barcode.ashx?data=${text}&code=Code128&dpi=96`
 }
 
-// Fetch prescription data
-const fetchPrescriptionData = async () => {
-  isLoading.value = true
-  error.value = ''
-  try {
-    const response = await axios.get('http://localhost/Projects/Lacuna_main_only/public/api/prescriptions/by-details', {
-      params: {
-        mobile_number: route.query.mobile,
-        invoice_number: route.params.id
-      }
-    })
-    if (response.data.success && response.data.data) {
-      prescriptionData.value = response.data.data
-    } else {
-      error.value = response.data.message || 'Prescription not found. Please verify your details.'
-    }
-  } catch (e) {
-    error.value = e.response?.data?.message || 'Failed to fetch prescription data. Please try again.'
-    console.error('Fetch Error:', e)
-  } finally {
-    isLoading.value = false
-  }
+const closePrint = () => {
+  emit('close')
 }
 
-// Load data and trigger print
 onMounted(() => {
-  if (route.state && route.state.prescriptionData) {
-    prescriptionData.value = route.state.prescriptionData
-    triggerPrint()
-  } else if (route.params.id && route.query.mobile) {
-    fetchPrescriptionData().then(() => {
-      if (prescriptionData.value) {
-        triggerPrint()
-      }
-    })
-  } else {
-    error.value = 'No prescription data or parameters provided.'
+  if (props.prescriptionData) {
+    setTimeout(() => {
+      isPrinting.value = true
+      window.print()
+      isPrinting.value = false
+    }, 100)
   }
 })
 
-// Trigger print and handle redirect
-const triggerPrint = () => {
-  window.print()
-  // Listen for print dialog close (approximated by afterprint event)
-  window.onafterprint = () => {
-    router.go(-1) // Redirect back to the previous page
-    window.onafterprint = null // Clean up
-  }
+// Handle after print event
+window.onafterprint = () => {
+  closePrint()
 }
 </script>
 
 <style scoped>
 .print-container {
-  padding: 0;
-  margin: 0;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
 .prescription-container {
   width: 210mm;
-  height: 297mm;
+  min-height: 297mm;
   margin: 0 auto;
   position: relative;
   box-sizing: border-box;
   overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+  background-color: white;
 }
 
 .prescription-header {
@@ -318,8 +311,13 @@ const triggerPrint = () => {
 }
 
 .prescription-content {
-  padding-top: 100px;
-  padding-bottom: 80px;
+  padding-top: 7rem;
+  padding-bottom: 5rem;
+}
+
+.patient-info {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .prescription-footer-container {
@@ -351,70 +349,57 @@ const triggerPrint = () => {
   pointer-events: none;
 }
 
-/* Enhanced rules to suppress margins and padding in print */
+/* Print-specific styles */
 @media print {
+  .print-container {
+    padding: 0;
+    background: transparent;
+  }
+  
+  button {
+    display: none !important;
+  }
+  
   @page {
     size: A4;
     margin: 0 !important;
-    padding: 0 !important;
-    @top-left { content: none; }
-    @top-center { content: none; }
-    @top-right { content: none; }
-    @bottom-left { content: none; }
-    @bottom-center { content: none; }
-    @bottom-right { content: none; }
   }
-  body {
+  
+  body, html {
     margin: 0 !important;
     padding: 0 !important;
-    width: 210mm;
-    height: 297mm;
+    background: white !important;
   }
-  .print-container {
-    display: block;
-    width: 210mm;
-    height: 297mm;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+  
   .prescription-container {
-    width: 210mm;
-    height: 297mm;
-    margin: 0 !important;
-    padding: 0 !important;
-    position: relative;
+    box-shadow: none;
+    margin: 0 auto;
+    width: 100%;
+    height: auto;
   }
-  .prescription-header {
-    position: absolute;
-    top: 0;
+
+  /* Ensure proper spacing in print */
+  .prescription-content {
+    padding-top: 6rem;
+    padding-bottom: 4rem;
   }
-  .prescription-footer-container {
-    position: absolute;
-    bottom: 0;
+
+  /* Prevent page breaks inside important sections */
+  .patient-info, .md\:col-span-3, .md\:col-span-9 {
+    page-break-inside: avoid;
   }
-  html, body, .print-container, .prescription-container {
-    margin: 0 !important;
-    padding: 0 !important;
+
+  /* Adjust font sizes for print */
+  .text-sm {
+    font-size: 10pt !important;
   }
-  .row.mt-1 .col-md-1,
-  .row.mt-1 .col-md-5,
-  .row.mt-1 .col-md-4,
-  .row.mt-1 .col-md-2,
-  .col-md-8,
-  .col-md-4,
-  span,
-  li,
-  p,
-  td {
-    font-size: 11px !important;
+  
+  .text-lg {
+    font-size: 12pt !important;
   }
-  #medicine_section {
-    min-height: 400px;
-    margin-left: 30px !important;
-  }
-  .text-right {
-    text-align: right !important;
+  
+  .font-bold {
+    font-weight: bold !important;
   }
 }
 </style>
-```
