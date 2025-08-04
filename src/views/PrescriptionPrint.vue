@@ -130,7 +130,7 @@
                     <span class="mr-2">{{ index + 1 }}.</span>
                     <div class="flex-grow">
                       <p>{{ medicine.x_medicine_name }}</p>
-                      <div class="grid grid-cols-4 gap-2 text-sm mt-1">
+                      <div class="grid grid-cols-3 gap-2 text-sm mt-1">
                         <div>{{ medicine.dosage }}</div>
                         <div>{{ medicine.medicine_meal }}</div>
                         <div>{{ medicine.medication_duration === '0' ? 'As needed' : medicine.medication_duration }}</div>
