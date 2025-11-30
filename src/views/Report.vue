@@ -7,20 +7,8 @@
       <p class="text-blue-600 text-lg">Loading your lab report...</p>
     </div>
 
-    <!-- Error State -->
-    <div v-else-if="error" class="text-center py-16 bg-red-50">
-      <div class="text-red-500 text-lg font-semibold mb-2">Error</div>
-      <p class="text-gray-600">{{ error }}</p>
-      <button 
-        @click="goBack"
-        class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-      >
-        Try Again
-      </button>
-    </div>
-
     <!-- Report in iframe - Full Width but with proper height -->
-    <div v-else-if="reportUrl" class="w-full h-[calc(100vh-200px)]">
+    <div v-else-if="reportUrl" class="w-full h-[calc(108vh-200px)]">
       <iframe 
         :src="reportUrl" 
         class="w-full h-full border-0"
@@ -28,17 +16,6 @@
         @load="onIframeLoad"
       >
       </iframe>
-    </div>
-
-    <!-- No Report Found -->
-    <div v-else class="text-center py-16 bg-white">
-      <p class="text-gray-500 text-lg">No report found.</p>
-      <button 
-        @click="goBack"
-        class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
-      >
-        Go Back
-      </button>
     </div>
   </div>
 </template>
@@ -53,10 +30,6 @@ const router = useRouter()
 const reportUrl = ref('')
 const error = ref('')
 const loading = ref(true)
-
-const goBack = () => {
-  router.push('/')
-}
 
 const onIframeLoad = () => {
   // Iframe loaded successfully

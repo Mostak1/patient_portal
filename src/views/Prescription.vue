@@ -26,7 +26,7 @@
         </div>
         <div v-else-if="prescriptionData">
           <!-- Patient Info Section -->
-          <div class="patient-info border border-black rounded-3xl py-4 px-6 mb-6 grid grid-cols-6 text-center mt-10">
+          <div class="patient-info border border-black rounded-3xl py-4 px-6 mb-6 grid grid-cols-6 text-center mt-14">
             <div class="col-span-2">
               <p class="text-sm">Patient Name</p>
               <p class="font-bold">{{ prescription.patient_first_name }} {{ prescription.patient_last_name || '' }} {{ prescription.customerId ? '(' + prescription.customerId + ')' : '' }}</p>
@@ -152,12 +152,24 @@
                   </li>
                 </ol>
               </div>
+              
+              <!-- IPD Admission Section -->
+              <div v-if="showIpdAdmission" class="mt-6 ml-8">
+                <h3 class="font-bold text-lg mb-1" v-if="advices.length === 0">Advice:</h3>
+                <ol class="list-decimal pl-5 text-sm">
+                  <li>Admission in IPD for {{ ipdAdmission.admission_days }} days</li>
+                </ol>
+              </div>
+
               <div v-if="advices.length > 0" class="mt-6 ml-8">
                 <h3 class="font-bold text-lg mb-1">Advice:</h3>
                 <ol class="list-decimal pl-5 text-sm">
                   <li v-for="(advice, index) in advices" :key="'advice-' + index">{{ advice }}</li>
+                  <!-- Add IPD admission as additional advice if advices exist -->
+                  <li v-if="showIpdAdmission">Admission in IPD for {{ ipdAdmission.admission_days }} days</li>
                 </ol>
               </div>
+              
               <div v-if="prescription.next_visit_date" class="mt-6 ml-8">
                 <h3 class="font-bold text-lg mb-1">Follow-up:</h3>
                 <p class="text-sm">Next visit: {{ formatDate(prescription.next_visit_date) }} (in {{ prescription.follow_up_number }} {{ prescription.follow_up_type }})</p>
@@ -190,22 +202,11 @@
 
   <!-- Action Buttons -->
   <div class="flex justify-center gap-4 mt-8">
-    <button hidden @click="handlePrint" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-2">
-      <i class="fas fa-print"></i> Print
-    </button>
     <button @click="downloadPrescription" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
       <i class="fas fa-download"></i> Download PDF
     </button>
   </div>
-    <!-- Add this hidden div for printing -->
-  <div v-if="showPrintView" class="fixed inset-0 z-50 overflow-auto bg-white print:bg-transparent">
-    <PrescriptionPrint 
-      v-if="showPrintView" 
-      :prescriptionData="prescriptionData"
-      @close="handlePrintClose"
-    />
-  </div>
-  </div>
+</div>
 </template>
 
 <script setup>
@@ -234,6 +235,12 @@ const advices = computed(() => {
 const therapies = computed(() => prescriptionData.value?.prescribed_therapies || [])
 const investigations = computed(() => prescriptionData.value?.prescribed_tests || [])
 const diseaseHistories = computed(() => prescriptionData.value?.disease_histories || [])
+const ipdAdmission = computed(() => prescriptionData.value?.ipd_admission || {})
+
+// Check if IPD admission should be shown
+const showIpdAdmission = computed(() => {
+  return ipdAdmission.value && ipdAdmission.value.is_ipd_admission == 1
+})
 
 // Format date
 const formatDate = (dateString) => {
@@ -295,19 +302,6 @@ onMounted(() => {
     error.value = 'No prescription data or parameters provided.'
   }
 })
-
-
-import PrescriptionPrint from './PrescriptionPrint.vue';
-
-const showPrintView = ref(false);
-
-const handlePrint = () => {
-  showPrintView.value = true;
-};
-
-const handlePrintClose = () => {
-  showPrintView.value = false;
-};
 
 // Update downloadPrescription function
 const downloadPrescription = async () => {
