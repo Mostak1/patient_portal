@@ -94,23 +94,20 @@ const fetchData = async () => {
   
   try {
     if (documentType.value === 'report') {
-      const response = await axios.get('https://awc.careneterp.com:84/api/v1/customer-reports', {
-        params: {
-          invoice_number: invoiceNumber.value,
-          mobile_number: mobileNumber.value
-        }
-      })
+      // Use your new API for lab reports
+      const response = await axios.get(`http://192.168.8.37/Lacuna_main_only/public/api/lab-result/${invoiceNumber.value}/${mobileNumber.value}`)
 
-      if (response.data.success && response.data.data.length > 0) {
+      if (response.data) {
         router.push({
           name: 'Report',
           params: { id: invoiceNumber.value },
           query: { mobile: mobileNumber.value }
         })
       } else {
-        error.value = 'Report not found. Please verify your invoice and mobile number.'
+        error.value = response.data?.message || 'Report not found. Please verify your invoice and mobile number.'
       }
     } else if (documentType.value === 'prescription') {
+      // Keep existing prescription API
       const response = await axios.get('https://awc.careneterp.com:83/api/prescriptions/by-details', {
         params: {
           mobile_number: mobileNumber.value,
@@ -119,8 +116,6 @@ const fetchData = async () => {
       })
 
       if (response.data.success && response.data.data) {
-        // Log for debugging (remove in production)
-        console.log('API Response:', response.data.data)
         router.push({
           name: 'Prescription',
           params: { id: invoiceNumber.value },
@@ -132,7 +127,12 @@ const fetchData = async () => {
       }
     }
   } catch (e) {
-    error.value = e.response?.data?.message || 'Document request failed. Please try again.'
+    // Handle specific error for invalid credentials
+    if (e.response && e.response.data && e.response.data.message === "Invalid credentials.") {
+      error.value = 'Invalid invoice number or mobile number. Please check your credentials.'
+    } else {
+      error.value = e.response?.data?.message || 'Document request failed. Please try again.'
+    }
     console.error('Fetch Error:', e)
   } finally {
     isLoading.value = false

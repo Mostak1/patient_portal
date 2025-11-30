@@ -1,7 +1,6 @@
-```vue
 <template>
   <div class="bg-gray-50 min-h-screen flex flex-col" :class="{ 'print-hide': $route.name === 'PrescriptionPrint' }">
-    <!-- Simple header with centered logo and title -->
+    <!-- Header - Show for all routes -->
     <header class="bg-white shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
@@ -17,12 +16,12 @@
       </div>
     </header>
 
-    <!-- Main content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+    <!-- Main content - Full width for Report, centered for others -->
+    <main :class="mainClasses">
       <router-view />
     </main>
 
-    <!-- Simple footer -->
+    <!-- Footer - Show for all routes -->
     <footer class="bg-blue-600 text-white mt-auto">
       <div class="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
         <div class="text-center">
@@ -36,11 +35,28 @@
 </template>
 
 <script>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
 export default {
   name: 'App',
   data() {
     return {
       logo: '/logo_hr-1.webp'
+    }
+  },
+  setup() {
+    const route = useRoute()
+    
+    const mainClasses = computed(() => {
+      if (route.name === 'Report') {
+        return 'w-full flex-grow overflow-hidden'
+      }
+      return 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow'
+    })
+
+    return {
+      mainClasses
     }
   }
 }
@@ -61,4 +77,3 @@ export default {
   }
 }
 </style>
-```
