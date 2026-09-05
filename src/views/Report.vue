@@ -41,9 +41,9 @@ onMounted(async () => {
     const mobile = route.query.mobile
 
     try {
-        const response = await axios.get(`http://192.168.8.37/Lacuna_main_only/public/api/lab-result/${invoice}/${mobile}`)
+        const response = await axios.get(`https://erp.awcbd.org/api/lab-result/${invoice}/${mobile}`)
         if (response.data) {
-            reportUrl.value = `http://192.168.8.37/Lacuna_main_only/public/api/lab-result/${invoice}/${mobile}`
+            reportUrl.value = `https://erp.awcbd.org/api/lab-result/${invoice}/${mobile}`
         } else {
             error.value = 'No report found for the provided details.'
         }

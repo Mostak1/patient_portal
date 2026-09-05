@@ -10,7 +10,7 @@
       <div class="space-y-4 text-gray-700">
         <p class="text-base">Both prescriptions and pathological reports are available here.</p>
         <p class="text-base">Please ensure your payment has been completed.</p>
-        <p class="text-base">Use the phone number and ID number found on your receipt.</p>
+        <p class="text-base">Use the phone number and invoice number found on your receipt.</p>
         <p class="text-base">
           For consultant-signed copies, please collect them from the branch.
         </p>
@@ -95,7 +95,7 @@ const fetchData = async () => {
   try {
     if (documentType.value === 'report') {
       // Use your new API for lab reports
-      const response = await axios.get(`http://192.168.8.37/Lacuna_main_only/public/api/lab-result/${invoiceNumber.value}/${mobileNumber.value}`)
+      const response = await axios.get(`https://erp.awcbd.org/api/lab-result/${invoiceNumber.value}/${mobileNumber.value}`)
 
       if (response.data) {
         router.push({
@@ -108,7 +108,7 @@ const fetchData = async () => {
       }
     } else if (documentType.value === 'prescription') {
       // Keep existing prescription API
-      const response = await axios.get('https://awc.careneterp.com:83/api/prescriptions/by-details', {
+      const response = await axios.get('https://erp.awcbd.org/api/prescriptions/by-details', {
         params: {
           mobile_number: mobileNumber.value,
           invoice_number: invoiceNumber.value
