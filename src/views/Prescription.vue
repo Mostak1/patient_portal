@@ -1,5 +1,8 @@
 <template>
   <div class="prescription-wrapper">
+    <div class="prescription-page-toolbar print-hide">
+      <button type="button" class="prescription-back-button" @click="goBack"><i class="fas fa-arrow-left" aria-hidden="true"></i> Back to prescriptions</button>
+    </div>
     <div class="prescription-container bg-white">
       <!-- Prescription Header -->
       <div class="prescription-header absolute top-0 left-0 w-full bg-white z-10">
@@ -18,15 +21,17 @@
 
       <!-- Main Content -->
       <div class="prescription-content pt-28 pb-20 px-8">
-        <div v-if="isLoading" class="text-center text-gray-600">
-          <p>Loading prescription data...</p>
+        <div v-if="isLoading" class="prescription-loading" role="status" aria-live="polite">
+          <div class="prescription-loading-spinner" aria-hidden="true"></div>
+          <p class="prescription-loading-title">Loading your prescription</p>
+          <p class="prescription-loading-subtitle">Please wait while we securely load your clinical record.</p>
         </div>
         <div v-else-if="error" class="text-center text-red-600">
           <p>{{ error }}</p>
         </div>
         <div v-else-if="prescriptionData">
           <!-- Patient Info Section -->
-          <div class="patient-info border border-black rounded-3xl py-4 px-6 mb-6 grid grid-cols-6 text-center mt-14">
+          <div class="prescription-patient-info patient-info border border-black rounded-3xl py-4 px-6 mb-6 grid grid-cols-6 text-center mt-14">
             <div class="col-span-2">
               <p class="text-sm">Patient Name</p>
               <p class="font-bold">{{ prescription.patient_first_name }} {{ prescription.patient_last_name || '' }} {{ prescription.customerId ? '(' + prescription.customerId + ')' : '' }}</p>
@@ -119,7 +124,7 @@
             </div>
 
             <!-- Right Column -->
-            <div class="md:col-span-9 border-l border-[#269E9A] pl-8">
+            <div class="prescription-right-column md:col-span-9 border-l border-[#269E9A] pl-8">
               <div class="flex items-center mb-2">
                 <i class="fas fa-prescription text-3xl text-gray-300 mr-2"></i>
               </div>
@@ -129,7 +134,7 @@
                     <span class="mr-2">{{ index + 1 }}.</span>
                     <div class="flex-grow">
                       <p>{{ medicine.x_medicine_name }}</p>
-                      <div class="grid grid-cols-3 gap-2 text-sm mt-1">
+                      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm mt-1">
                         <div>{{ medicine.dosage }}</div>
                         <div>{{ medicine.medicine_meal }}</div>
                         <div>{{ medicine.medication_duration === '0' ? 'As needed' : medicine.medication_duration }}</div>
@@ -142,7 +147,7 @@
                   No medicines prescribed
                 </div>
               </div>
-              <div v-if="therapies.length > 0" class="mt-6 ml-8">
+              <div v-if="therapies.length > 0" class="mt-6 ml-0 md:ml-8">
                 <h3 class="font-bold text-lg mb-1">Therapy:</h3>
                 <ol class="list-decimal pl-5 text-sm">
                   <li v-for="(therapy, index) in therapies" :key="index">
@@ -154,14 +159,14 @@
               </div>
               
               <!-- IPD Admission Section -->
-              <div v-if="showIpdAdmission" class="mt-6 ml-8">
+              <div v-if="showIpdAdmission" class="mt-6 ml-0 md:ml-8">
                 <h3 class="font-bold text-lg mb-1" v-if="advices.length === 0">Advice:</h3>
                 <ol class="list-decimal pl-5 text-sm">
                   <li>Admission in IPD for {{ ipdAdmission.admission_days }} days</li>
                 </ol>
               </div>
 
-              <div v-if="advices.length > 0" class="mt-6 ml-8">
+              <div v-if="advices.length > 0" class="mt-6 ml-0 md:ml-8">
                 <h3 class="font-bold text-lg mb-1">Advice:</h3>
                 <ol class="list-decimal pl-5 text-sm">
                   <li v-for="(advice, index) in advices" :key="'advice-' + index">{{ advice }}</li>
@@ -170,7 +175,7 @@
                 </ol>
               </div>
               
-              <div v-if="prescription.next_visit_date" class="mt-6 ml-8">
+              <div v-if="prescription.next_visit_date" class="mt-6 ml-0 md:ml-8">
                 <h3 class="font-bold text-lg mb-1">Follow-up:</h3>
                 <p class="text-sm">Next visit: {{ formatDate(prescription.next_visit_date) }} (in {{ prescription.follow_up_number }} {{ prescription.follow_up_type }})</p>
               </div>
@@ -201,8 +206,8 @@
     </div>
 
   <!-- Action Buttons -->
-  <div class="flex justify-center gap-4 mt-8">
-    <button @click="downloadPrescription" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
+  <div class="flex justify-center gap-4 mt-6 mb-6">
+    <button @click="downloadPrescription" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2 prescription-download-button">
       <i class="fas fa-download"></i> Download PDF
     </button>
   </div>
@@ -212,9 +217,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import axios from 'axios'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { API_URLS } from '../config/api'
+import { portalApi } from '../services/portalApi'
 
 const route = useRoute()
 const router = useRouter()
@@ -222,6 +228,8 @@ const prescriptionData = ref(null)
 const businessLogo = ref('/awc_logo.png')
 const isLoading = ref(false)
 const error = ref('')
+
+const goBack = () => router.push({ name: 'Dashboard', hash: '#prescriptions' })
 
 // Computed properties
 const prescription = computed(() => prescriptionData.value?.prescription || {})
@@ -265,7 +273,7 @@ const calculateBMI = () => {
 
 // Generate barcode
 const generateBarcode = (text) => {
-  return `https://barcode.tec-it.com/barcode.ashx?data=${text}&code=Code128&dpi=96`
+  return API_URLS.barcode(text)
 }
 
 // Fetch prescription data
@@ -273,12 +281,7 @@ const fetchPrescriptionData = async () => {
   isLoading.value = true
   error.value = ''
   try {
-    const response = await axios.get('https://erp.awcbd.org/api/prescriptions/by-details', {
-      params: {
-        mobile_number: route.query.mobile,
-        invoice_number: route.params.id
-      }
-    })
+    const response = await portalApi.get(API_URLS.portalPrescription(route.params.id))
     if (response.data.success && response.data.data) {
       prescriptionData.value = response.data.data
     } else {
@@ -296,7 +299,7 @@ const fetchPrescriptionData = async () => {
 onMounted(() => {
   if (route.state && route.state.prescriptionData) {
     prescriptionData.value = route.state.prescriptionData
-  } else if (route.params.id && route.query.mobile) {
+  } else if (route.params.id) {
     fetchPrescriptionData()
   } else {
     error.value = 'No prescription data or parameters provided.'
@@ -359,8 +362,35 @@ const downloadPrescription = async () => {
   line-height: 1.5;
 }
 
+.prescription-page-toolbar {
+  width: min(100% - 2rem, 840px);
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #66808c;
+  font-size: .75rem;
+}
+
+.prescription-back-button {
+  min-height: 40px;
+  padding: .5rem .75rem;
+  border: 1px solid #c7dce0;
+  border-radius: 9px;
+  color: #165b72;
+  background: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.prescription-back-button:hover { border-color: #0f766e; background: #f2fbfa; }
+.prescription-back-button:active { transform: translateY(1px) scale(.98); }
+.prescription-download-button { border: 0; cursor: pointer; }
+
 .prescription-container {
   width: 210mm;
+  max-width: 100%;
   height: 297mm;
   margin: 0 auto;
   position: relative;
@@ -380,6 +410,45 @@ const downloadPrescription = async () => {
 .prescription-content {
   padding-top: 100px;
   padding-bottom: 80px;
+}
+
+.prescription-loading {
+  min-height: 390px;
+  padding: 3rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #183b70;
+}
+
+.prescription-loading-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 1rem;
+  border: 4px solid #dbeafe;
+  border-top-color: #269e9a;
+  border-radius: 9999px;
+  animation: prescription-spin .8s linear infinite;
+}
+
+.prescription-loading-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.prescription-loading-subtitle {
+  max-width: 22rem;
+  margin: .45rem 0 0;
+  color: #64748b;
+  font-size: .875rem;
+  line-height: 1.5;
+}
+
+@keyframes prescription-spin {
+  to { transform: rotate(360deg); }
 }
 
 .prescription-footer-container {
@@ -411,6 +480,30 @@ const downloadPrescription = async () => {
   pointer-events: none;
 }
 
+@media screen and (max-width: 768px) {
+  .prescription-page-toolbar { width: min(100% - 1.5rem, 840px); align-items: flex-start; flex-direction: column; }
+  .prescription-wrapper { width: 100%; max-width: 100%; overflow-x: hidden; }
+  .prescription-container { width: 100%; height: auto; min-height: 0; margin: 0; overflow: visible; }
+  .prescription-header,
+  .prescription-footer-container { position: relative; }
+  .prescription-header { z-index: 1; }
+  .prescription-content { padding: 1rem !important; }
+  .prescription-loading { min-height: 300px; padding: 2.5rem 1rem; }
+  .doctor-info { flex-direction: column; gap: .75rem; }
+  .doctor-details { width: 100%; text-align: left !important; }
+  .doctor-details h2 { font-size: 1.25rem; overflow-wrap: anywhere; }
+  .clinic-logo img { max-width: 170px; height: auto; }
+  .prescription-patient-info { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 1rem !important; padding: 1rem !important; gap: .75rem; }
+  .prescription-patient-info > div { min-width: 0; overflow-wrap: anywhere; }
+  .prescription-right-column { border-left: 0 !important; padding-left: 0 !important; margin-top: 1.5rem; }
+  .prescription-footer-container { margin-top: 2rem; }
+  .background-image { display: none; }
+  .prescription-footer .grid { padding-left: 1rem; padding-right: 1rem; }
+  .prescription-footer .text-right { text-align: left !important; }
+  .prescription-footer p { overflow-wrap: anywhere; }
+  .flex.justify-center.gap-4 { flex-wrap: wrap; }
+}
+
 @media print {
   body {
     margin: 0;
@@ -436,6 +529,10 @@ const downloadPrescription = async () => {
   }
 
   button {
+    display: none !important;
+  }
+
+  .prescription-page-toolbar {
     display: none !important;
   }
 
