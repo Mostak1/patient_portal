@@ -104,7 +104,7 @@ onUnmounted(() => { if (reportUrl.value) URL.revokeObjectURL(reportUrl.value) })
   font-weight: 800;
 }
 .report-heading p:not(.section-kicker) { 
-  max-width: 45rem; 
+  /* max-width: 45rem;  */
   margin: 0; 
   color: #5b7381; 
   line-height: 1.6; 
