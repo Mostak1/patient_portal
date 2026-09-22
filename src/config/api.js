@@ -1,5 +1,6 @@
-export const API_BASE_URL = 'http://localhost/crm/Carenet_ERP/public/api'
-const WEB_BASE_URL = API_BASE_URL.replace(/\/api$/, '')
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/crm/carenet_erp/public/index.php/api'
+const WEB_BASE_URL = API_BASE_URL.replace(/\/index\.php\/api$/, '').replace(/\/api$/, '')
 const BARCODE_BASE_URL = 'https://barcode.tec-it.com/barcode.ashx'
 
 export const API_URLS = {
