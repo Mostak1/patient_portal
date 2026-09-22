@@ -12,10 +12,10 @@
 
         <!-- Desktop Navigation Bar -->
         <nav v-if="authState.token" class="portal-nav" aria-label="Primary navigation">
-          <RouterLink :class="{ active: route.name === 'Dashboard' && (!route.hash || route.hash === '#overview') }" :to="{ name: 'Dashboard', hash: '#overview' }" @click="scrollToSection('#overview')">Overview</RouterLink>
-          <RouterLink :class="{ active: route.hash === '#reports' || route.name === 'Report' }" :to="{ name: 'Dashboard', hash: '#reports' }" @click="scrollToSection('#reports')">Reports</RouterLink>
-          <RouterLink :class="{ active: route.hash === '#prescriptions' || route.name === 'Prescription' }" :to="{ name: 'Dashboard', hash: '#prescriptions' }" @click="scrollToSection('#prescriptions')">Prescriptions</RouterLink>
-          <RouterLink :class="{ active: route.hash === '#lifestyle' }" :to="{ name: 'Dashboard', hash: '#lifestyle' }" @click="scrollToSection('#lifestyle')">Lifestyle</RouterLink>
+          <RouterLink :class="{ active: isNavActive('#overview') }" :to="{ name: 'Dashboard', hash: '#overview' }" @click="scrollToSection('#overview')">Overview</RouterLink>
+          <RouterLink :class="{ active: isNavActive('#reports') }" :to="{ name: 'Dashboard', hash: '#reports' }" @click="scrollToSection('#reports')">Reports</RouterLink>
+          <RouterLink :class="{ active: isNavActive('#prescriptions') }" :to="{ name: 'Dashboard', hash: '#prescriptions' }" @click="scrollToSection('#prescriptions')">Prescriptions</RouterLink>
+          <RouterLink :class="{ active: isNavActive('#lifestyle') }" :to="{ name: 'Dashboard', hash: '#lifestyle' }" @click="scrollToSection('#lifestyle')">Lifestyle</RouterLink>
         </nav>
 
         <div class="portal-header-actions">
@@ -36,7 +36,7 @@
       <div class="bottom-nav-inner">
         <RouterLink 
           class="bottom-nav-item" 
-          :class="{ active: (route.name === 'Dashboard' || route.name === 'Home') && (!route.hash || route.hash === '#overview') }" 
+          :class="{ active: isNavActive('#overview') }" 
           :to="{ name: 'Dashboard', hash: '#overview' }"
           @click="scrollToSection('#overview')"
         >
@@ -48,7 +48,7 @@
 
         <RouterLink 
           class="bottom-nav-item" 
-          :class="{ active: route.hash === '#reports' || route.name === 'Report' }" 
+          :class="{ active: isNavActive('#reports') }" 
           :to="{ name: 'Dashboard', hash: '#reports' }"
           @click="scrollToSection('#reports')"
         >
@@ -60,7 +60,7 @@
 
         <RouterLink 
           class="bottom-nav-item" 
-          :class="{ active: route.hash === '#prescriptions' || route.name === 'Prescription' }" 
+          :class="{ active: isNavActive('#prescriptions') }" 
           :to="{ name: 'Dashboard', hash: '#prescriptions' }"
           @click="scrollToSection('#prescriptions')"
         >
@@ -72,7 +72,7 @@
 
         <RouterLink 
           class="bottom-nav-item" 
-          :class="{ active: route.hash === '#lifestyle' }" 
+          :class="{ active: isNavActive('#lifestyle') }" 
           :to="{ name: 'Dashboard', hash: '#lifestyle' }"
           @click="scrollToSection('#lifestyle')"
         >
@@ -95,7 +95,7 @@
 </template>
 
 <script>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authState, logout } from './services/portalApi'
 
@@ -107,24 +107,116 @@ export default {
     const isLoggingOut = ref(false)
     const logo = '/logo_hr-1.webp'
     const currentYear = new Date().getFullYear()
+    const activeSection = ref('#overview')
+
+    let isManualScrolling = false
+    let manualScrollTimeout = null
+
+    const sectionIds = ['overview', 'reports', 'prescriptions', 'lifestyle']
+
+    const updateActiveSection = () => {
+      if (typeof window === 'undefined') return
+      if (route.name !== 'Dashboard' && route.name !== 'Home') return
+
+      const scrollPos = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0
+      const windowHeight = window.innerHeight
+      const fullHeight = document.documentElement.scrollHeight
+
+      // When reaching near the bottom of page, highlight the last section
+      if (scrollPos + windowHeight >= fullHeight - 80) {
+        activeSection.value = '#lifestyle'
+        return
+      }
+
+      const offsetThreshold = 150
+      let current = 'overview'
+
+      for (const id of sectionIds) {
+        const el = document.getElementById(id)
+        if (el) {
+          const top = el.getBoundingClientRect().top
+          if (top <= offsetThreshold) {
+            current = id
+          }
+        }
+      }
+
+      activeSection.value = `#${current}`
+    }
+
+    const onScroll = () => {
+      if (!isManualScrolling) {
+        updateActiveSection()
+      }
+    }
+
+    const isNavActive = (hash) => {
+      if (route.name === 'Report') {
+        return hash === '#reports'
+      }
+      if (route.name === 'Prescription' || route.name === 'PrescriptionPrint') {
+        return hash === '#prescriptions'
+      }
+      if (route.name === 'Dashboard' || route.name === 'Home') {
+        return activeSection.value === hash
+      }
+      return (route.hash || '#overview') === hash
+    }
 
     const handleSessionExpired = () => {
       if (route.name !== 'Login') router.replace({ name: 'Login', query: { redirect: route.fullPath, reason: 'expired' } })
     }
 
-    if (typeof window !== 'undefined') window.addEventListener('patient-portal:session-expired', handleSessionExpired)
-    onBeforeUnmount(() => { if (typeof window !== 'undefined') window.removeEventListener('patient-portal:session-expired', handleSessionExpired) })
+    if (typeof window !== 'undefined') {
+      window.addEventListener('patient-portal:session-expired', handleSessionExpired)
+    }
+
+    onMounted(() => {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('scroll', onScroll, { passive: true })
+        window.addEventListener('resize', onScroll, { passive: true })
+        setTimeout(updateActiveSection, 150)
+      }
+    })
+
+    onBeforeUnmount(() => { 
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('patient-portal:session-expired', handleSessionExpired)
+        window.removeEventListener('scroll', onScroll)
+        window.removeEventListener('resize', onScroll)
+      }
+      if (manualScrollTimeout) clearTimeout(manualScrollTimeout)
+    })
+
+    watch(() => route.fullPath, () => {
+      if (route.name === 'Dashboard' || route.name === 'Home') {
+        if (route.hash) {
+          activeSection.value = route.hash
+        } else {
+          activeSection.value = '#overview'
+        }
+        setTimeout(updateActiveSection, 150)
+      }
+    })
 
     const mainClasses = computed(() => route.name === 'Report' ? 'portal-main portal-main-report' : 'portal-main')
 
     const scrollToSection = (hash) => {
+      activeSection.value = hash
       if (route.name === 'Dashboard' || route.name === 'Home') {
+        isManualScrolling = true
+        if (manualScrollTimeout) clearTimeout(manualScrollTimeout)
+        manualScrollTimeout = setTimeout(() => {
+          isManualScrolling = false
+          updateActiveSection()
+        }, 800)
+
         setTimeout(() => {
           const el = document.querySelector(hash)
           if (el) {
-            const headerOffset = 85
+            const headerOffset = 75
             const elementPosition = el.getBoundingClientRect().top
-            const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+            const offsetPosition = elementPosition + (window.pageYOffset || window.scrollY || 0) - headerOffset
             window.scrollTo({
               top: Math.max(0, offsetPosition),
               behavior: 'smooth'
@@ -141,6 +233,8 @@ export default {
       mainClasses,
       authState,
       isLoggingOut,
+      activeSection,
+      isNavActive,
       scrollToSection,
       handleLogout: async () => {
         if (isLoggingOut.value) return
