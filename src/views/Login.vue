@@ -22,7 +22,7 @@
       <div class="login-card-heading">
         <p class="section-kicker">Patient Portal</p>
         <h2>Sign in</h2>
-        <p>Use the Customer ID and mobile number registered with the clinic.</p>
+        <p>Use your Patient ID and password to access your health portal.</p>
       </div>
 
       <div v-if="sessionExpiredMessage" class="login-message login-message-warning" role="status">
@@ -37,38 +37,46 @@
 
       <form @submit.prevent="submitLogin" novalidate>
         <div class="field-group">
-          <label for="customer-id">Customer ID</label>
+          <label for="patient-id">Patient ID</label>
           <div class="input-wrap">
             <i class="fas fa-id-card field-icon" aria-hidden="true"></i>
             <input 
-              id="customer-id" 
-              v-model.trim="customerId" 
+              id="patient-id" 
+              v-model.trim="patientId" 
               required 
               autocomplete="username" 
-              placeholder="e.g. CO000123" 
-              :aria-invalid="Boolean(error && !customerId)" 
-              aria-describedby="customer-id-help"
+              placeholder="e.g. CO2294087" 
+              :aria-invalid="Boolean(error && !patientId)" 
+              aria-describedby="patient-id-help"
             >
           </div>
-          <small id="customer-id-help">This is the ID provided by the clinic.</small>
+          <small id="patient-id-help">Found on your clinic prescription, receipt, or member card.</small>
         </div>
 
         <div class="field-group">
-          <label for="mobile-number">Registered mobile number</label>
-          <div class="input-wrap">
-            <i class="fas fa-phone field-icon" aria-hidden="true"></i>
-            <input 
-              id="mobile-number" 
-              v-model.trim="mobileNumber" 
-              required 
-              autocomplete="tel" 
-              inputmode="tel" 
-              placeholder="01XXXXXXXXX" 
-              :aria-invalid="Boolean(error && !mobileNumber)" 
-              aria-describedby="mobile-help"
-            >
+          <div class="field-label-row">
+            <label for="portal-password">Password</label>
+            <RouterLink to="/forgot-password" class="forgot-link">Forgot password?</RouterLink>
           </div>
-          <small id="mobile-help">Enter the number linked to your patient record.</small>
+          <div class="input-wrap">
+            <i class="fas fa-lock field-icon" aria-hidden="true"></i>
+            <input 
+              id="portal-password" 
+              v-model="password" 
+              :type="showPassword ? 'text' : 'password'" 
+              autocomplete="current-password" 
+              placeholder="Enter password or clinic default" 
+            >
+            <button 
+              type="button" 
+              class="toggle-visibility" 
+              :aria-label="showPassword ? 'Hide password' : 'Show password'"
+              @click="showPassword = !showPassword"
+            >
+              <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" aria-hidden="true"></i>
+            </button>
+          </div>
+          <small id="password-help">Initial login? Use default password provided by clinic reception.</small>
         </div>
 
         <p v-if="error" class="form-error" role="alert">
@@ -86,7 +94,7 @@
       <div class="login-card-footer">
         <p class="login-help">
           <i class="fas fa-circle-question" aria-hidden="true"></i>
-          <span>Having trouble signing in? Please contact clinic reception.</span>
+          <span>Need help? Contact clinic reception or the call center for phone verification.</span>
         </p>
       </div>
     </div>
@@ -100,8 +108,9 @@ import { login } from '../services/portalApi'
 
 const router = useRouter()
 const route = useRoute()
-const customerId = ref('')
-const mobileNumber = ref('')
+const patientId = ref('')
+const password = ref('')
+const showPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
 const locked = ref(false)
@@ -110,22 +119,28 @@ const sessionExpiredMessage = route.query.reason === 'expired' ? 'Your secure se
 const submitLogin = async () => {
   error.value = ''
   locked.value = false
-  if (!customerId.value || !mobileNumber.value) {
-    error.value = 'Enter both your Customer ID and registered mobile number.'
+  if (!patientId.value) {
+    error.value = 'Please enter your Patient ID.'
     return
   }
   loading.value = true
   try {
-    await login(customerId.value, mobileNumber.value)
-    router.replace(route.query.redirect || { name: 'Dashboard' })
+    const res = await login(patientId.value, password.value || null)
+    if (res.must_reset_password) {
+      router.replace({ name: 'ForcePasswordReset' })
+    } else {
+      router.replace(route.query.redirect || { name: 'Dashboard' })
+    }
   } catch (requestError) {
     if (requestError.response?.status === 429) {
       locked.value = true
-      error.value = 'Login is temporarily locked. Please try again later.'
+      error.value = 'Login is temporarily locked due to too many attempts. Please try again later.'
     } else {
-      error.value = 'We could not verify those details. Check your Customer ID and mobile number, then try again.'
+      error.value = requestError.response?.data?.message || 'Invalid credentials.'
     }
-  } finally { loading.value = false }
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -278,6 +293,37 @@ const submitLogin = async () => {
 
 .input-wrap {
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.forgot-link {
+  font-size: 0.78rem;
+  color: #0f766e;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+.toggle-visibility {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.4rem;
+  font-size: 0.92rem;
   display: flex;
   align-items: center;
 }
@@ -437,6 +483,152 @@ const submitLogin = async () => {
 
 @keyframes login-spin {
   to { transform: rotate(360deg); }
+}
+
+/* Profile Picker Styles (Shared Mobile Number) */
+.profile-picker-view {
+  animation: fadeIn 0.25s ease-out;
+}
+
+.picker-header {
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.picker-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 0.75rem;
+  border-radius: 16px;
+  background: rgba(15, 118, 110, 0.1);
+  color: #0f766e;
+  font-size: 1.4rem;
+}
+
+.picker-header h2 {
+  margin: 0;
+  color: #163b59;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.picker-header p {
+  margin: 0.45rem 0 0;
+  color: #5b7381;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.profile-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid #e1ebf0;
+  border-radius: 14px;
+  background: #ffffff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.profile-item:hover:not(:disabled) {
+  border-color: #0f766e;
+  background: #f0fdfa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(15, 118, 110, 0.1);
+}
+
+.profile-item:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #0f766e 0%, #115e59 100%);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  color: #163b59;
+  font-size: 0.96rem;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-meta {
+  color: #647b88;
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.profile-arrow {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.profile-item:hover .profile-arrow {
+  color: #0f766e;
+  transform: translateX(3px);
+}
+
+.picker-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: transparent;
+  color: #647b88;
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.picker-back-btn:hover {
+  border-color: #0f766e;
+  color: #0f766e;
+  background: rgba(15, 118, 110, 0.04);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Tablet & Mobile Layout Adjustments */

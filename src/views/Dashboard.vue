@@ -34,6 +34,7 @@
       <!-- Jump Navigation -->
       <nav class="dashboard-jump-nav" aria-label="Dashboard sections">
         <a href="#overview">Overview</a>
+        <a href="#appointments">Appointments</a>
         <a href="#reports">Reports</a>
         <a href="#prescriptions">Prescriptions</a>
         <a href="#lifestyle">Lifestyle</a>
@@ -45,6 +46,9 @@
         :latest-visit-date="data.latest_visit?.transaction_date"
         :report-progress="reportProgress"
       />
+
+      <!-- 3.5. My Appointments Section -->
+      <MyAppointments />
 
       <!-- 4. Latest Report Summary -->
       <DashboardLatestReport
@@ -86,6 +90,7 @@ import DashboardTrends from '../components/dashboard/DashboardTrends.vue'
 import DashboardRecords from '../components/dashboard/DashboardRecords.vue'
 import DashboardLifestyle from '../components/dashboard/DashboardLifestyle.vue'
 import DashboardNotes from '../components/dashboard/DashboardNotes.vue'
+import MyAppointments from '../components/dashboard/MyAppointments.vue'
 
 const router = useRouter()
 const loading = ref(true)

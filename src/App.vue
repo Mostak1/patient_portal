@@ -11,11 +11,13 @@
         </RouterLink>
 
         <!-- Desktop Navigation Bar -->
-        <nav v-if="authState.token" class="portal-nav" aria-label="Primary navigation">
+        <nav v-if="authState.token && !authState.mustResetPassword" class="portal-nav" aria-label="Primary navigation">
           <RouterLink :class="{ active: isNavActive('#overview') }" :to="{ name: 'Dashboard', hash: '#overview' }" @click="scrollToSection('#overview')">Overview</RouterLink>
+          <RouterLink :class="{ active: isNavActive('#appointments') }" :to="{ name: 'Dashboard', hash: '#appointments' }" @click="scrollToSection('#appointments')">Appointments</RouterLink>
           <RouterLink :class="{ active: isNavActive('#reports') }" :to="{ name: 'Dashboard', hash: '#reports' }" @click="scrollToSection('#reports')">Reports</RouterLink>
           <RouterLink :class="{ active: isNavActive('#prescriptions') }" :to="{ name: 'Dashboard', hash: '#prescriptions' }" @click="scrollToSection('#prescriptions')">Prescriptions</RouterLink>
           <RouterLink :class="{ active: isNavActive('#lifestyle') }" :to="{ name: 'Dashboard', hash: '#lifestyle' }" @click="scrollToSection('#lifestyle')">Lifestyle</RouterLink>
+          <RouterLink class="nav-btn-book" to="/book-appointment"><i class="fas fa-calendar-plus"></i> Book Visit</RouterLink>
         </nav>
 
         <div class="portal-header-actions">
@@ -32,7 +34,7 @@
     </main>
 
     <!-- Mobile Fixed Bottom Navigation Bar -->
-    <nav v-if="authState.token" class="portal-bottom-nav print-hide" aria-label="Mobile navigation">
+    <nav v-if="authState.token && !authState.mustResetPassword" class="portal-bottom-nav print-hide" aria-label="Mobile navigation">
       <div class="bottom-nav-inner">
         <RouterLink 
           class="bottom-nav-item" 
@@ -44,6 +46,18 @@
             <i class="fas fa-house-medical" aria-hidden="true"></i>
           </div>
           <span>Overview</span>
+        </RouterLink>
+
+        <RouterLink 
+          class="bottom-nav-item" 
+          :class="{ active: isNavActive('#appointments') }" 
+          :to="{ name: 'Dashboard', hash: '#appointments' }"
+          @click="scrollToSection('#appointments')"
+        >
+          <div class="bottom-nav-icon-wrap">
+            <i class="fas fa-calendar-check" aria-hidden="true"></i>
+          </div>
+          <span>Visits</span>
         </RouterLink>
 
         <RouterLink 
@@ -67,19 +81,18 @@
           <div class="bottom-nav-icon-wrap">
             <i class="fas fa-prescription-bottle-medical" aria-hidden="true"></i>
           </div>
-          <span>Prescriptions</span>
+          <span>Rx</span>
         </RouterLink>
 
         <RouterLink 
           class="bottom-nav-item" 
-          :class="{ active: isNavActive('#lifestyle') }" 
-          :to="{ name: 'Dashboard', hash: '#lifestyle' }"
-          @click="scrollToSection('#lifestyle')"
+          :class="{ active: $route.name === 'BookAppointment' }" 
+          to="/book-appointment"
         >
-          <div class="bottom-nav-icon-wrap">
-            <i class="fas fa-heart-pulse" aria-hidden="true"></i>
+          <div class="bottom-nav-icon-wrap" style="color: #0e7490;">
+            <i class="fas fa-calendar-plus" aria-hidden="true"></i>
           </div>
-          <span>Lifestyle</span>
+          <span>Book</span>
         </RouterLink>
       </div>
     </nav>
@@ -112,7 +125,7 @@ export default {
     let isManualScrolling = false
     let manualScrollTimeout = null
 
-    const sectionIds = ['overview', 'reports', 'prescriptions', 'lifestyle']
+    const sectionIds = ['overview', 'appointments', 'reports', 'prescriptions', 'lifestyle']
 
     const updateActiveSection = () => {
       if (typeof window === 'undefined') return
@@ -167,8 +180,13 @@ export default {
       if (route.name !== 'Login') router.replace({ name: 'Login', query: { redirect: route.fullPath, reason: 'expired' } })
     }
 
+    const handleMustResetPassword = () => {
+      if (route.name !== 'ForcePasswordReset') router.replace({ name: 'ForcePasswordReset' })
+    }
+
     if (typeof window !== 'undefined') {
       window.addEventListener('patient-portal:session-expired', handleSessionExpired)
+      window.addEventListener('patient-portal:must-reset-password', handleMustResetPassword)
     }
 
     onMounted(() => {
@@ -312,6 +330,24 @@ export default {
 .portal-nav a.active { 
   color: #0f766e; 
   border-bottom-color: #0f766e; 
+}
+
+.portal-nav a.nav-btn-book {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #0e7490 !important;
+  color: #fff !important;
+  height: 34px !important;
+  padding: 0 0.85rem !important;
+  border-radius: 8px !important;
+  border-bottom: none !important;
+  margin-left: 0.5rem;
+}
+
+.portal-nav a.nav-btn-book:hover {
+  background: #155e75 !important;
+  color: #fff !important;
 }
 
 .portal-header-actions { 
